@@ -4,11 +4,16 @@ const axios = require('axios');
 const path = require('path');
 const app = express();
 
-// 中间件：跨域+JSON解析（必须放在最前面）
+// 🔴 【优先级最高】强制根路径 / 直接返回 index.html，彻底拦截所有旧路由
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// 中间件：跨域+JSON解析
 app.use(cors());
 app.use(express.json());
 
-// 🔴 所有API接口，仅 /api/ 开头，绝对不碰根路径 /
+// 🔴 所有API接口，仅 /api/ 开头，绝对不碰根路径
 // 健康检查接口（仅 /api/health 可访问）
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -44,13 +49,8 @@ app.get('/api/block/:numOrHash', async (req, res) => {
   }
 });
 
-// 🔴 核心修复1：静态文件服务，放在所有API最后
+// 🔴 静态文件服务，兜底所有其他静态请求（比如 /index.html、资源文件等）
 app.use(express.static(__dirname));
-
-// 🔴 核心修复2：强制根路径 / 直接返回 index.html，彻底解决拦截问题
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
 
 // Railway动态端口（绝对不能写死3000！）
 const PORT = process.env.PORT || 3000;

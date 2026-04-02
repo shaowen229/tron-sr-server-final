@@ -3,12 +3,12 @@ const cors = require('cors');
 const axios = require('axios');
 const app = express();
 
-// 中间件：跨域+JSON解析（必须放在最前面）
+// 🔴 中间件必须放在最前面
 app.use(cors());
 app.use(express.json());
 
-// 🔴 后端API接口（保留所有功能）
-// 健康检查接口
+// 🔴 所有API接口必须是 /api/ 开头，绝对不能写根路径 /
+// 健康检查接口（仅 /api/health 可访问）
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -17,7 +17,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 获取最新区块
+// 获取最新区块接口
 app.get('/api/block/latest', async (req, res) => {
   try {
     const { data } = await axios.get('https://api.trongrid.io/wallet/getnowblock');
@@ -27,7 +27,7 @@ app.get('/api/block/latest', async (req, res) => {
   }
 });
 
-// 单个区块查询（高度/哈希）
+// 单个区块查询接口（高度/哈希）
 app.get('/api/block/:numOrHash', async (req, res) => {
   try {
     const numOrHash = req.params.numOrHash;
@@ -43,11 +43,11 @@ app.get('/api/block/:numOrHash', async (req, res) => {
   }
 });
 
-// 🔴 核心修复：添加静态文件服务，根路径自动返回index.html
-// 必须放在API接口后面，确保API优先匹配
+// 🔴 核心修复：静态文件服务必须放在【所有API接口的最后】
+// 确保根路径 / 优先匹配静态文件 index.html，而不是API
 app.use(express.static(__dirname));
 
-// Railway动态端口（绝对不能写死3000！）
+// 🔴 Railway动态端口（绝对不能写死3000！）
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ 服务启动成功，运行端口：${PORT}`);

@@ -1,13 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const path = require('path');
 const app = express();
 
-// 🔴 中间件必须放在最前面
+// 中间件：跨域+JSON解析（必须放在最前面）
 app.use(cors());
 app.use(express.json());
 
-// 🔴 所有API接口必须是 /api/ 开头，绝对不能写根路径 /
+// 🔴 所有API接口，仅 /api/ 开头，绝对不碰根路径 /
 // 健康检查接口（仅 /api/health 可访问）
 app.get('/api/health', (req, res) => {
   res.json({ 
@@ -43,11 +44,15 @@ app.get('/api/block/:numOrHash', async (req, res) => {
   }
 });
 
-// 🔴 核心修复：静态文件服务必须放在【所有API接口的最后】
-// 确保根路径 / 优先匹配静态文件 index.html，而不是API
+// 🔴 核心修复1：静态文件服务，放在所有API最后
 app.use(express.static(__dirname));
 
-// 🔴 Railway动态端口（绝对不能写死3000！）
+// 🔴 核心修复2：强制根路径 / 直接返回 index.html，彻底解决拦截问题
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Railway动态端口（绝对不能写死3000！）
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ 服务启动成功，运行端口：${PORT}`);

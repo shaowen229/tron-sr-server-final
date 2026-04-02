@@ -3,21 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>波场SR监控系统</title>
+    <title>波场SR监控（多SR筛选+指定下注）</title>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:'Segoe UI',Roboto,'Helvetica Neue',sans-serif;background:#f7f8fa;max-width:1100px;margin:24px auto;padding:0 16px}
         .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;flex-wrap:wrap}
         h1{font-size:24px;color:#d32f2f;font-weight:700;display:flex;align-items:center;gap:8px}
+        .header-icon{width:28px;height:28px}
         .header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-        .balance-badge{background:#fff;padding:8px 12px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;height:40px;min-width:120px;justify-content:center}
+        .balance-badge{
+            background:#fff;padding:8px 12px;border-radius:10px;
+            box-shadow:0 2px 8px rgba(0,0,0,0.08);font-size:14px;font-weight:600;
+            display:flex;align-items:center;gap:6px;height:40px;min-width:120px;
+            justify-content:center
+        }
         .balance-badge .num{color:#d32f2f;font-size:15px}
         .balance-badge .icon{width:16px;height:16px;flex-shrink:0}
-        .top-btn{display:flex;align-items:center;gap:6px;background:#fff;border:none;font-size:15px;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.08);transition:all 0.2s;height:40px}
+        .top-btn{
+            display:flex;align-items:center;gap:6px;background:#fff;border:none;
+            font-size:15px;padding:10px 14px;border-radius:12px;cursor:pointer;
+            box-shadow:0 2px 8px rgba(0,0,0,0.08);transition:all 0.2s;height:40px
+        }
         .top-btn:hover{background:#f9fafb;transform:translateY(-1px)}
         .top-icon{width:18px;height:18px}
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:999;display:none;backdrop-filter:blur(4px)}
-        .modal{background:#fff;border-radius:16px;width:90%;max-width:500px;padding:24px;position:relative;box-shadow:0 8px 32px rgba(0,0,0,0.1)}
+        .modal{background:#fff;border-radius:16px;width:90%;max-width:580px;padding:24px;position:relative;box-shadow:0 8px 32px rgba(0,0,0,0.1)}
         .modal-close{position:absolute;top:16px;right:16px;border:none;background:#f5f5f5;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
         .modal-close:hover{background:#e5e7eb}
         .modal h3{font-size:18px;font-weight:600;margin-bottom:16px;color:#333}
@@ -29,7 +39,15 @@
         .monitor-tag{display:inline-block;padding:4px 10px;background:#fff7e6;color:#FF7D00;border-radius:8px;font-size:12px;font-weight:500}
         .odd-tag{display:inline-block;padding:2px 6px;background:#fef2f2;color:#d32f2f;border-radius:4px;font-size:11px;margin-left:4px}
         .even-tag{display:inline-block;padding:2px 6px;background:#eff6ff;color:#165DFF;border-radius:4px;font-size:11px;margin-left:4px}
-        .sr-tag{display:inline-block;padding:3px 6px;background:#f0f9ff;color:#0369a1;border-radius:4px;font-size:11px;font-weight:600;text-align:center;min-width:40px;line-height:1.2}
+        .sr-tag{
+            display:inline-block;padding:3px 6px;background:#f0f9ff;color:#0369a1;
+            border-radius:4px;font-size:11px;font-weight:600;text-align:center;
+            min-width:40px;line-height:1.2
+        }
+        .bet-pending{background:#fff7e6;color:#cc6600;padding:10px 14px;border-radius:8px;margin:10px 0;border:1px solid #ffd59e;font-size:14px;font-weight:500;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+        .bet-pending .badge{background:#ff7d00;color:#fff;padding:2px 6px;border-radius:4px;font-size:12px}
+        .bet-win{background:#E8FBF2;color:#00B42A;padding:10px 14px;border-radius:8px;margin:10px 0;border:1px solid #00B42A}
+        .bet-lose{background:#fef2f2;color:#d32f2f;padding:10px 14px;border-radius:8px;margin:10px 0;border:1px solid #d32f2f}
         .bet-panel{background:#f9fafb;padding:14px;border-radius:10px;margin:10px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
         .bet-type{display:flex;gap:8px}
         .bet-type button{padding:8px 16px;border-radius:8px;border:1px solid #e5e7eb;background:#fff;cursor:pointer}
@@ -46,45 +64,61 @@
         .record-cost{color:#d32f2f}
         .record-time{color:#999}
         .search-box{position:relative;margin-top:8px;margin-bottom:16px}
-        .search-input{flex:1;padding:12px 14px;padding-right:30px;border:1px solid #e5e7eb;border-radius:10px;font-family:monospace;font-size:14px;outline:none;transition:all 0.2s;width:100%}
+        .search-input{
+            flex:1;padding:12px 14px;padding-right:30px;border:1px solid #e5e7eb;
+            border-radius:10px;font-family:monospace;font-size:14px;outline:none;
+            transition:all 0.2s;width:100%
+        }
         .search-input:focus{border-color:#d32f2f;box-shadow:0 0 0 3px rgba(211,47,47,0.1)}
-        .search-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:20px;height:20px;display:flex;align-items:center;justify-content:center;background:#e5e7eb;color:#666;border:none;border-radius:50%;cursor:pointer;font-size:12px}
+        .search-clear{
+            position:absolute;right:12px;top:50%;transform:translateY(-50%);
+            width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+            background:#e5e7eb;color:#666;border:none;border-radius:50%;cursor:pointer;font-size:12px
+        }
         .search-clear:hover{background:#d1d5db}
         .sr-filter-row{display:flex;align-items:center;gap:10px;margin:10px 0;flex-wrap:wrap}
         .sr-filter-row label{font-size:14px;font-weight:500;color:#333}
-        .input-box,.wallet-input-box,.search-modal-input-box{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
-        .input-box input,.wallet-input input,.search-modal-input input{flex:1;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;font-family:monospace;font-size:14px;outline:none;transition:all 0.2s;min-width:200px}
-        .input-box input:focus,.wallet-input input:focus,.search-modal-input input:focus{border-color:#d32f2f;box-shadow:0 0 0 3px rgba(211,47,47,0.1)}
+        .sr-input-box,.wallet-input-box,.search-modal-input-box{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+        .sr-input,.wallet-input{
+            flex:1;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;
+            font-family:monospace;font-size:14px;outline:none;transition:all 0.2s;min-width:200px
+        }
+        .sr-input:focus,.wallet-input:focus{border-color:#d32f2f;box-shadow:0 0 0 3px rgba(211,47,47,0.1)}
         .btn{background:#d32f2f;color:#fff;border:none;padding:12px 20px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:500;transition:all 0.2s}
         .btn:hover{background:#b71c1c;transform:translateY(-1px)}
         .btn-gray{background:#6b7280;color:#fff}
         .btn-gray:hover{background:#4b5563}
         .load-more-btn{background:#f5f5f5;color:#333;border:none;padding:10px 16px;border-radius:10px;cursor:pointer;font-size:14px;margin:12px auto 0;display:block;transition:all 0.2s}
-        .load-more-btn:hover{background:#e5e7eb}
-        .copy-btn{width:26px;height:26px;border-radius:6px;border:none;background:#eff6ff;color:#165DFF;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0}
-        .copy-btn:hover{background:#dbeafe;color:#0f4c81;transform:scale(1.05)}
-        .copy-btn.success{background:#dcfce7;color:#166534}
+        .load-more-btn:hover{background:#eaeaea}
+        .copy-btn{
+            width:26px;height:26px;border-radius:6px;border:none;
+            background:#eff6ff;color:#165DFF;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            transition:all 0.2s;flex-shrink:0
+        }
+        .copy-btn:hover{background:#dbeafe;color:#0f4ba7;transform:scale(1.05)}
+        .copy-btn.success{background:#dcfce7;color:#16a34a}
         .copy-icon{width:14px;height:14px}
         .block-info{line-height:2.4;font-size:15px;display:grid;grid-template-columns:120px auto;align-items:center;gap:8px}
-        .block-info-detail{line-height:2.8;font-size:15px;display:grid;grid-template-columns:100px auto;align-items:flex-start;padding-top:10px}
-        .label{font-weight:500;color:#555;width:100%}
-        .value{color:#d32f2f;font-family:monospace;font-weight:500;word-break:break-all;display:flex;align-items:center;gap:6px}
-        .value-detail{color:#333;font-family:monospace;font-weight:500;word-break:break-all;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-        .table-box{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;table-layout:fixed}
+        
+        /* 搜索结果UI保持不变 */
+        .block-info-detail{
+            background:#f8f9fa;border:1px solid #e5e7eb;border-radius:12px;padding:18px;margin-top:12px;
+            line-height:2.3;font-size:14px;display:grid;grid-template-columns:90px 1fr;
+            align-items:flex-start;gap:12px 16px;word-break:break-all;
+        }
+        .label{font-weight:600;color:#444}
+        .value{color:#d32f2f;font-family:monospace;font-weight:500;display:flex;align-items:center;gap:6px}
+        .value-detail{color:#333;font-family:monospace;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        
+        .table-box{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px;table-layout:fixed;}
         .table-box th{background:#fafafa;color:#666;font-weight:600;padding:10px 6px;text-align:center;border-bottom:2px solid #f2f2f2;white-space:nowrap;vertical-align:middle;line-height:1.2}
         .table-box td{padding:8px 6px;text-align:center;border-bottom:1px solid #f2f2f2;word-break:break-all;vertical-align:middle;line-height:1.4}
-        .sr-table th:nth-child(1){width:50px}
-        .sr-table th:nth-child(2){width:90px}
-        .sr-table th:nth-child(3){width:160px}
-        .sr-table th:nth-child(4){width:70px}
-        .sr-table th:nth-child(5){width:80px}
-        .net-table th:nth-child(1){width:50px}
-        .net-table th:nth-child(2){width:90px}
-        .net-table th:nth-child(3){width:180px}
-        .net-table th:nth-child(4){flex:1}
+        .sr-table th:nth-child(1){width:50px}.sr-table th:nth-child(2){width:90px}.sr-table th:nth-child(3){width:160px}.sr-table th:nth-child(4){width:70px}.sr-table th:nth-child(5){width:80px}
+        .net-table th:nth-child(1){width:50px}.net-table th:nth-child(2){width:90px}.net-table th:nth-child(3){width:180px}.net-table th:nth-child(4){flex:1}
         .block-owner-time{display:flex;flex-direction:column;align-items:center;gap:2px;justify-content:center}
         .owner-short{font-family:monospace;font-size:12px;color:#333;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
-        .time-small{font-size:11px;color:#999}
+        .time-small{font-size:11px;color:#999;}
         .table-box tr:hover{background:#fafafa}
         .hash-col{font-family:monospace;display:flex;align-items:center;gap:4px;justify-content:center;flex-wrap:wrap}
         .height-col{display:flex;align-items:center;gap:4px;justify-content:center;flex-wrap:wrap}
@@ -95,10 +129,8 @@
         .tip{font-size:13px;color:#888;margin-top:12px}
         .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
         @media(max-width:768px){
-            .grid{grid-template-columns:1fr}
-            .block-info-detail{grid-template-columns:80px auto}
-            .table-container{overflow-x:auto;padding-bottom:4px}
-            .sr-table th:nth-child(3),.net-table th:nth-child(3){width:130px}
+            .grid{grid-template-columns:1fr}.block-info-detail{grid-template-columns:70px 1fr}
+            .table-container{overflow-x:auto;padding-bottom:4px}.sr-table th:nth-child(3),.net-table th:nth-child(3){width:130px}
         }
         .loading-tip{text-align:center;padding:20px;color:#666;font-size:14px}
         .balance-box{text-align:center;padding:20px;background:#f9fafb;border-radius:12px;margin-bottom:10px}
@@ -116,154 +148,136 @@
             <path d="M2 17L12 22L22 17" stroke="#d32f2f" stroke-width="2" stroke-linecap="round"/>
             <path d="M2 12L12 17L22 12" stroke="#d32f2f" stroke-width="2" stroke-linecap="round"/>
         </svg>
-        波场SR专属监控
+        波场SR专属实时监控
     </h1>
     <div class="header-right">
         <div class="balance-badge" id="topBalance">
             <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 6.5H4C3.44772 6.5 3 6.94772 3 7.5V16.5C3 17.0523 3.44772 17.5 4 17.5H20C20.5523 17.5 21 17.0523 21 16.5V7.5C21 6.94772 20.5523 6.5 20 6.5Z" stroke="#d32f2f" stroke-width="2"/>
+                <path d="M20 6.5H4C3.44772 6.5, 3 6.94772, 3 7.5V16.5C3 17.0523, 3.44772 17.5, 4 17.5H20C20.5523 17.5, 21 17.0523, 21 16.5V7.5C21 6.94772, 20.5523 6.5, 20 6.5Z" stroke="#d32f2f" stroke-width="2"/>
             </svg>
             余额：<span class="num">0.00</span>
         </div>
-        <button class="top-btn" id="openWalletBtn">
-            <svg class="top-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 18V6C21 4.89543 20.1046 4 19 4H5C3.89543 4 3 4.89543 3 6V18C3 19.1046 3.89543 20 5 20H19C20.1046 20 21 19.1046 21 18Z" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-                <path d="M3 10H21" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            💰钱包
-        </button>
-        <button class="top-btn" id="openSettingBtn">
-            <svg class="top-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10.3246 3.31276C11.1246 2.90044 12.8754 2.90044 13.6754 3.31276L15.3246 4.18724C15.7246 4.3934 16.0671 4.73589 16.2733 5.13589L17.1478 6.78462C17.5591 7.58462 17.5591 9.33538 17.1478 10.1354L16.2733 11.7841C16.0671 12.1841 15.7246 12.5266 15.3246 12.7327L13.6754 13.6072C12.8754 14.0195 11.1246 14.0195 10.3246 13.6072L8.67538 12.7327C8.27538 12.5266 7.93289 12.1841 7.72673 11.7841L6.85218 10.1354C6.44086 9.33538 6.44086 7.58462 6.85218 6.78462L7.72673 5.13589C7.93289 4.73589 8.27538 4.3934 8.67538 4.18724L10.3246 3.31276Z" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-                <path d="M12 15.5C13.933 15.5 15.5 13.933 15.5 12C15.5 10.067 13.933 8.5 12 8.5C10.067 8.5 8.5 10.067 8.5 12C8.5 13.933 10.067 15.5 12 15.5Z" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-                <path d="M19 14V18C19 19.1046 18.1046 20 17 20H7C5.89543 20 5 19.1046 5 18V14" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            ⚙️设置
-        </button>
-        <button class="top-btn" id="openSearchBtn">
-            <svg class="top-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-                <path d="M21 21L16.65 16.65" stroke="#333" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            🔍搜索
-        </button>
+        <button class="top-btn" id="openWallet">💰钱包</button>
+        <button class="top-btn" id="openSetting">⚙️设置</button>
+        <button class="top-btn" id="openSearch">🔍搜索</button>
     </div>
 </div>
 
-<!-- 钱包弹窗 -->
-<div class="modal-overlay" id="walletModal">
-    <div class="modal">
-        <button class="modal-close" id="closeWalletModal">&times;</button>
-        <h3>钱包管理</h3>
-        <div class="balance-box">
-            <div class="balance-label">可用余额</div>
-            <div class="balance-amount" id="walletBalance">0.00</div>
-        </div>
-        <div class="wallet-input-box">
-            <input type="number" id="rechargeInput" placeholder="输入充值金额" step="0.01">
-            <button class="btn" id="rechargeBtn">充值</button>
-        </div>
-        <div class="wallet-input-box">
-            <input type="number" id="withdrawInput" placeholder="输入提现金额" step="0.01">
-            <button class="btn btn-gray" id="withdrawBtn">提现</button>
-        </div>
-        <h4 style="margin-top:16px;font-size:14px;">交易记录</h4>
-        <div class="record-list" id="walletRecordList"></div>
-        <div class="wallet-btn-group">
-            <button class="btn" id="clearRecordBtn">清空记录</button>
-            <button class="btn btn-gray" id="closeWalletModalBtn">关闭</button>
-        </div>
-    </div>
-</div>
-
-<!-- 设置弹窗 -->
 <div class="modal-overlay" id="settingModal">
     <div class="modal">
-        <button class="modal-close" id="closeSettingModal">&times;</button>
-        <h3>SR监控设置</h3>
-        <div class="input-box">
-            <input type="text" id="sr1Input" placeholder="SR1地址（T开头34位）" value="TQhuVjZtmp6k4fPmGZLr4wyXdziCVSPkEX">
+        <button class="modal-close" id="closeSetting">✕</button>
+        <h3>监控超级代表设置</h3>
+        <div class="sr-input-box">
+            <input type="text" class="sr-input" id="sr1" value="TQhuVjZtmp6k4fPmGZLr4wyXdziCVSPkEX">
+            <input type="text" class="sr-input" id="sr2" placeholder="SR地址2（可选）">
+            <input type="text" class="sr-input" id="sr3" placeholder="SR地址3（可选）">
         </div>
-        <div class="input-box">
-            <input type="text" id="sr2Input" placeholder="SR2地址（可选）">
+        <button class="btn" id="saveBtn" style="width:100%">保存并启动监控</button>
+        <div class="tip" style="margin-top:12px">当前监控：<span id="targetList">未设置</span></div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="walletModal">
+    <div class="modal">
+        <button class="modal-close" id="closeWallet">✕</button>
+        <h3>钱包余额</h3>
+        <div class="balance-box">
+            <div class="balance-label">可用余额</div>
+            <div class="balance-amount" id="balance">0.00</div>
         </div>
-        <div class="input-box">
-            <input type="text" id="sr3Input" placeholder="SR3地址（可选）">
+        <div class="wallet-input-box">
+            <input type="number" class="wallet-input" id="amountInput" placeholder="输入操作金额" min="0.01" step="0.01">
         </div>
-        <div class="input-box">
-            <button class="btn" id="saveSettingBtn">保存并启动监控</button>
-            <button class="btn btn-gray" id="closeSettingModalBtn">关闭</button>
+        <div class="wallet-btn-group">
+            <button class="btn btn-gray" id="deductBtn">扣除金额</button>
+            <button class="btn" id="rechargeBtn">充值金额</button>
+        </div>
+        <div style="margin-top:16px">
+            <h4 style="font-size:14px;margin-bottom:8px">金额变动记录</h4>
+            <div class="record-list" id="recordList"></div>
         </div>
     </div>
 </div>
 
-<!-- 搜索弹窗 -->
+<!-- 区块搜索弹窗：新增输入框一键清除叉号 -->
 <div class="modal-overlay" id="searchModal">
     <div class="modal">
-        <button class="modal-close" id="closeSearchModal">&times;</button>
-        <h3>区块搜索</h3>
+        <button class="modal-close" id="closeSearch">✕</button>
+        <h3>全网区块精准搜索</h3>
+        <div class="tip" style="margin-bottom:12px">支持区块高度/哈希值搜索，填其一即可</div>
         <div class="search-modal-input-box">
-            <input type="text" id="searchInput" placeholder="输入区块高度/哈希">
-            <button class="btn" id="doSearchBtn">搜索</button>
+            <!-- 区块高度输入框+清除叉号 -->
+            <div class="search-box" style="flex:1;min-width:200px;margin:0;">
+                <input type="number" class="search-input" id="searchByHeight" placeholder="输入区块高度" min="1">
+                <button class="search-clear" onclick="clearSearchInput('height')">×</button>
+            </div>
+            <!-- 区块哈希输入框+清除叉号 -->
+            <div class="search-box" style="flex:1;min-width:200px;margin:0;">
+                <input type="text" class="search-input" id="searchByHash" placeholder="输入完整区块哈希">
+                <button class="search-clear" onclick="clearSearchInput('hash')">×</button>
+            </div>
         </div>
-        <div id="searchResult" class="search-result-tip">请输入区块高度/哈希进行搜索</div>
         <div class="search-modal-btn-group">
-            <button class="btn btn-gray" id="closeSearchModalBtn">关闭</button>
+            <button class="btn btn-gray" id="clearSearchInput">清空输入</button>
+            <button class="btn" id="doSearch">立即搜索</button>
         </div>
+        <div id="searchResultBox" class="search-result-tip">请输入搜索条件并点击搜索</div>
     </div>
 </div>
 
-<!-- 主内容 -->
 <div class="grid">
     <div class="card">
         <div class="card-header">
             <svg class="card-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 8V16C21 17.1 20.1 18 19 18H5C3.9 18 3 17.1 3 16V8C3 6.9 3.9 6 5 6H19C20.1 6 21 6.9 21 8Z" stroke="#165DFF" stroke-width="2"/>
+                <path d="M21 8V16C21 17.1, 20.1 18, 19 18H5C3.9 18, 3 17.1, 3 16V8C3 6.9, 3.9 6, 5 6H19C20.1 6, 21 6.9, 21 8Z" stroke="#165DFF" stroke-width="2"/>
             </svg>
             <h2>最新全网区块</h2>
             <span class="sync-tag">稳定同步·不跳块</span>
         </div>
         <div class="block-info">
-            <span class="label">区块高度：</span><span class="value" id="latestBlockHeight">-</span>
-            <span class="label">区块哈希：</span><span class="value" id="latestBlockHash">-</span>
-            <span class="label">出块者：</span><span class="value" id="latestBlockSr">-</span>
-            <span class="label">出块时间：</span><span class="value" id="latestBlockTime">-</span>
+            <span class="label">区块高度：</span><span id="blockHeight" class="value">-</span>
+            <span class="label">区块哈希：</span><span id="blockHash" class="value">-</span>
+            <span class="label">出块者：</span><span id="blockSr" class="value">-</span>
+            <span class="label">出块时间：</span><span id="blockTime" class="value">-</span>
         </div>
-        <button class="btn" style="margin-top:16px;" id="refreshLatestBtn">立即刷新</button>
+        <button class="btn" style="margin-top:16px" id="refreshBtn">立即同步</button>
+        <div class="tip" id="lastUpdate">同步中...</div>
     </div>
     <div class="card">
         <div class="card-header">
             <svg class="card-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 22C12 22 20 18 20 12V5C20 3.9 19.1 3 18 3H6C4.9 3 4 3.9 4 5V12C4 18 12 22 12 22Z" stroke="#FF7D00" stroke-width="2"/>
+                <path d="M12 22C12 22, 20 18, 20 12V5C20 3.9, 19.1 3, 18 3H6C4.9 3, 4 3.9, 4 5V12C4 18, 12 22, 12 22Z" stroke="#FF7D00" stroke-width="2"/>
             </svg>
             <h2>目标SR出块记录</h2>
-            <span class="monitor-tag">实时捕获</span>
+            <span class="sync-tag">实时捕获</span>
+            <span class="monitor-tag" id="currentMonitorTxt">未设置</span>
         </div>
+        <div id="betStatus" style="display:none"></div>
         <div class="bet-panel">
             <div class="bet-type">
-                <button class="bet-btn active" data-bet="odd">单</button>
-                <button class="bet-btn" data-bet="even">双</button>
+                <button data-type="odd" class="active">单</button>
+                <button data-type="even">双</button>
             </div>
             <select class="bet-select" id="betSrSelect">
-                <option value="">选择SR</option>
+                <option value="">选择下注SR</option>
             </select>
-            <input type="number" class="bet-input" id="betAmountInput" placeholder="下注金额" step="0.01">
-            <button class="bet-btn" id="placeBetBtn">确认下注</button>
-            <span class="bet-tip">赔率1:1，猜中即赢</span>
+            <input type="number" class="bet-input" id="betAmount" placeholder="下注金额" min="0.01" step="0.01">
+            <button class="bet-btn" id="betBtn">确认下注</button>
+            <span class="bet-tip">赔率 1:1.96</span>
         </div>
         <div class="sr-filter-row">
             <label>查看记录：</label>
-            <select class="sr-filter-select" id="srFilterSelect">
+            <select class="sr-filter-select" id="srFilter">
                 <option value="all">全部SR记录</option>
             </select>
         </div>
         <div class="search-box">
-            <input type="number" class="search-input" id="srSearchInput" placeholder="搜索区块高度...">
-            <button class="search-clear" id="srSearchClear">&times;</button>
+            <input type="number" class="search-input" id="searchSrHeight" placeholder="搜索区块高度...">
+            <button class="search-clear" onclick="clearSearch('sr')">×</button>
         </div>
         <div class="table-container">
             <div id="srRecordBox">
-                <div class="empty-tip">等待监控启动...</div>
+                <div class="empty-tip">等待目标SR出块...</div>
             </div>
         </div>
     </div>
@@ -278,543 +292,507 @@
         <h2>全网区块历史</h2>
     </div>
     <div class="search-box">
-        <input type="number" class="search-input" id="netSearchInput" placeholder="搜索区块高度...">
-        <button class="search-clear" id="netSearchClear">&times;</button>
+        <input type="number" class="search-input" id="searchNetHeight" placeholder="搜索区块高度...">
+        <button class="search-clear" onclick="clearSearch('net')">×</button>
     </div>
     <div class="table-container">
-        <div id="netRecordBox">
+        <div id="allHistoryBox">
             <div class="empty-tip">加载中...</div>
         </div>
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.0/dist/TronWeb.min.js"></script>
 <script>
-// ✅ 已经帮你填好你的Railway后端地址，直接用！
-const API_BASE = 'https://tron-sr-server-final-production.up.railway.app';
-
-// 全局状态
-let walletBalance = 0;
-let walletRecords = [];
-let srList = [];
-let currentBetSr = '';
-let currentBetType = 'odd';
-let latestBlock = null;
-let srBlockRecords = [];
-let netBlockRecords = [];
+// 全局配置
+let targetSR = [];
+let allBlockHistory = [];
+let srBlockList = [];
+let lastProcessedHeight = 0;
 let netShowCount = 15;
+const netMaxCount = 100;
+const loadMoreCount = 50;
+let balance = 0.00;
+let betRecord = [];
+let currentBet = null;
+const ODDS = 1.96;
+const TRON_FULL_HOST = 'https://api.trongrid.io';
+let tronWeb;
 
-// DOM元素
-const walletModal = document.getElementById('walletModal');
-const openWalletBtn = document.getElementById('openWalletBtn');
-const closeWalletModal = document.getElementById('closeWalletModal');
-const closeWalletModalBtn = document.getElementById('closeWalletModalBtn');
-const walletBalanceEl = document.getElementById('walletBalance');
-const topBalanceEl = document.querySelector('.balance-badge .num');
-const rechargeInput = document.getElementById('rechargeInput');
-const rechargeBtn = document.getElementById('rechargeBtn');
-const withdrawInput = document.getElementById('withdrawInput');
-const withdrawBtn = document.getElementById('withdrawBtn');
-const walletRecordList = document.getElementById('walletRecordList');
-const clearRecordBtn = document.getElementById('clearRecordBtn');
-
-const settingModal = document.getElementById('settingModal');
-const openSettingBtn = document.getElementById('openSettingBtn');
-const closeSettingModal = document.getElementById('closeSettingModal');
-const closeSettingModalBtn = document.getElementById('closeSettingModalBtn');
-const sr1Input = document.getElementById('sr1Input');
-const sr2Input = document.getElementById('sr2Input');
-const sr3Input = document.getElementById('sr3Input');
-const saveSettingBtn = document.getElementById('saveSettingBtn');
-
-const searchModal = document.getElementById('searchModal');
-const openSearchBtn = document.getElementById('openSearchBtn');
-const closeSearchModal = document.getElementById('closeSearchModal');
-const closeSearchModalBtn = document.getElementById('closeSearchModalBtn');
-const searchInput = document.getElementById('searchInput');
-const doSearchBtn = document.getElementById('doSearchBtn');
-const searchResult = document.getElementById('searchResult');
-
-const latestBlockHeightEl = document.getElementById('latestBlockHeight');
-const latestBlockHashEl = document.getElementById('latestBlockHash');
-const latestBlockSrEl = document.getElementById('latestBlockSr');
-const latestBlockTimeEl = document.getElementById('latestBlockTime');
-const refreshLatestBtn = document.getElementById('refreshLatestBtn');
-
-const betSrSelect = document.getElementById('betSrSelect');
-const betAmountInput = document.getElementById('betAmountInput');
-const placeBetBtn = document.getElementById('placeBetBtn');
-const betTypeBtns = document.querySelectorAll('.bet-type button');
-
-const srFilterSelect = document.getElementById('srFilterSelect');
-const srSearchInput = document.getElementById('srSearchInput');
-const srSearchClear = document.getElementById('srSearchClear');
-const srRecordBox = document.getElementById('srRecordBox');
-
-const netSearchInput = document.getElementById('netSearchInput');
-const netSearchClear = document.getElementById('netSearchClear');
-const netRecordBox = document.getElementById('netRecordBox');
-
-// 工具函数
-function formatTime(timestamp) {
-  const d = new Date(timestamp);
-  return d.toLocaleString('zh-CN', { hour12: false });
-}
-
-function shortenAddr(addr) {
-  if (!addr || addr.length <= 14) return addr;
-  return addr.slice(0, 6) + '...' + addr.slice(-6);
-}
-
-async function copyText(text, fullText = '') {
-  const copyContent = fullText || text;
-  try {
-    await navigator.clipboard.writeText(copyContent);
-    return true;
-  } catch (err) {
-    alert('复制失败，请手动复制：' + copyContent);
-    return false;
-  }
-}
-
-function createCopyBtn(text, fullText = '') {
-  const btn = document.createElement('button');
-  btn.className = 'copy-btn';
-  btn.innerHTML = `<svg class="copy-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3C7.44772 3 7 3.44772 7 4V16C7 16.5523 7.44772 17 8 17H16C16.5523 17 17 16.5523 17 16V4C17 3.44772 16.5523 3 16 3H8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M3 7C3 6.44772 3.44772 6 4 6H16C16.5523 6 17 6.44772 17 7V19C17 19.5523 16.5523 20 16 20H4C3.44772 20 3 19.5523 3 19V7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-  btn.onclick = async (e) => {
-    e.stopPropagation();
-    const success = await copyText(text, fullText);
-    if (success) {
-      btn.classList.add('success');
-      setTimeout(() => btn.classList.remove('success'), 1500);
-    }
-  };
-  return btn;
-}
-
-// 钱包功能
-function updateWalletUI() {
-  walletBalanceEl.textContent = walletBalance.toFixed(2);
-  topBalanceEl.textContent = walletBalance.toFixed(2);
-  renderWalletRecords();
-}
-
-function renderWalletRecords() {
-  if (walletRecords.length === 0) {
-    walletRecordList.innerHTML = '<div class="empty-tip">暂无交易记录</div>';
-    return;
-  }
-  const html = walletRecords.map(r => `
-    <div class="record-item">
-      <div>
-        <span class="record-type">${r.type === 'recharge' ? '充值' : r.type === 'withdraw' ? '提现' : r.type === 'win' ? '下注赢' : '下注输'}</span>
-        <span class="record-time">${r.time}</span>
-      </div>
-      <span class="${r.amount > 0 ? 'record-income' : 'record-cost'}">${r.amount > 0 ? '+' : ''}${r.amount.toFixed(2)}</span>
-    </div>
-  `).join('');
-  walletRecordList.innerHTML = html;
-}
-
-openWalletBtn.onclick = () => walletModal.style.display = 'flex';
-closeWalletModal.onclick = () => walletModal.style.display = 'none';
-closeWalletModalBtn.onclick = () => walletModal.style.display = 'none';
-walletModal.onclick = (e) => e.target === walletModal && (walletModal.style.display = 'none');
-
-rechargeBtn.onclick = () => {
-  const amount = parseFloat(rechargeInput.value);
-  if (isNaN(amount) || amount <= 0) {
-    alert('请输入正确的充值金额');
-    return;
-  }
-  walletBalance += amount;
-  walletRecords.unshift({ type: 'recharge', amount, time: new Date().toLocaleString('zh-CN') });
-  updateWalletUI();
-  rechargeInput.value = '';
-  alert('充值成功！');
-};
-
-withdrawBtn.onclick = () => {
-  const amount = parseFloat(withdrawInput.value);
-  if (isNaN(amount) || amount <= 0) {
-    alert('请输入正确的提现金额');
-    return;
-  }
-  if (amount > walletBalance) {
-    alert('余额不足');
-    return;
-  }
-  walletBalance -= amount;
-  walletRecords.unshift({ type: 'withdraw', amount: -amount, time: new Date().toLocaleString('zh-CN') });
-  updateWalletUI();
-  withdrawInput.value = '';
-  alert('提现成功！');
-};
-
-clearRecordBtn.onclick = () => {
-  if (confirm('确定清空所有交易记录？')) {
-    walletRecords = [];
-    renderWalletRecords();
-  }
-};
-
-// 设置功能
-openSettingBtn.onclick = () => settingModal.style.display = 'flex';
-closeSettingModal.onclick = () => settingModal.style.display = 'none';
-closeSettingModalBtn.onclick = () => settingModal.style.display = 'none';
-settingModal.onclick = (e) => e.target === settingModal && (settingModal.style.display = 'none');
-
-saveSettingBtn.onclick = async () => {
-  const sr1 = sr1Input.value.trim();
-  const sr2 = sr2Input.value.trim();
-  const sr3 = sr3Input.value.trim();
-  const list = [sr1, sr2, sr3].filter(Boolean);
-  if (list.length === 0) {
-    alert('请至少输入一个SR地址');
-    return;
-  }
-  srList = list;
-  updateSrSelect();
-  settingModal.style.display = 'none';
-  await loadLatestBlock();
-  alert('监控已启动！');
-};
-
-function updateSrSelect() {
-  betSrSelect.innerHTML = '<option value="">选择SR</option>';
-  srFilterSelect.innerHTML = '<option value="all">全部SR记录</option>';
-  srList.forEach((sr, idx) => {
-    const opt1 = document.createElement('option');
-    opt1.value = sr;
-    opt1.textContent = `SR${idx+1} (${shortenAddr(sr)})`;
-    betSrSelect.appendChild(opt1);
-    const opt2 = document.createElement('option');
-    opt2.value = sr;
-    opt2.textContent = `SR${idx+1}`;
-    srFilterSelect.appendChild(opt2);
-  });
-}
-
-// 区块数据获取
-async function fetchLatestBlock() {
-  const res = await fetch(`${API_BASE}/api/block/latest`);
-  if (!res.ok) throw new Error('获取最新区块失败');
-  return await res.json();
-}
-
-async function loadLatestBlock() {
-  try {
-    const block = await fetchLatestBlock();
-    latestBlock = block;
-    latestBlockHeightEl.textContent = block.block_header.raw_data.number;
-    latestBlockHashEl.textContent = block.blockID;
-    const srAddr = block.block_header.raw_data.witness_address;
-    const shortSr = shortenAddr(srAddr);
-    const isMySr = srList.includes(srAddr);
-    latestBlockSrEl.innerHTML = `${shortSr} ${isMySr ? '<span class="sr-tag">我的SR</span>' : ''}`;
-    latestBlockSrEl.appendChild(createCopyBtn(shortSr, srAddr));
-    latestBlockTimeEl.textContent = formatTime(block.block_header.raw_data.timestamp * 1000);
-    await loadNetBlocks(block.block_header.raw_data.number);
-    if (isMySr) {
-      addSrBlockRecord(block);
-    }
-    checkBetResult(block);
-  } catch (err) {
-    console.error(err);
-    alert('获取最新区块失败，请检查网络');
-  }
-}
-
-async function loadNetBlocks(latestNum) {
-  const records = [];
-  for (let i = 0; i < netShowCount; i++) {
-    const num = latestNum - i;
-    if (num < 0) break;
-    try {
-      const res = await fetch(`${API_BASE}/api/block/${num}`);
-      const block = await res.json();
-      records.push(block);
-    } catch (err) {
-      console.error('获取区块失败', num, err);
-    }
-  }
-  netBlockRecords = records;
-  renderNetRecords();
-}
-
-function renderNetRecords() {
-  if (netBlockRecords.length === 0) {
-    netRecordBox.innerHTML = '<div class="empty-tip">暂无数据</div>';
-    return;
-  }
-  const table = document.createElement('table');
-  table.className = 'table-box net-table';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>序号</th>
-        <th>高度</th>
-        <th>区块哈希</th>
-        <th>出块者 / 时间</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${netBlockRecords.map((block, idx) => {
-        const num = block.block_header.raw_data.number;
-        const hash = block.blockID;
-        const srAddr = block.block_header.raw_data.witness_address;
-        const shortSr = shortenAddr(srAddr);
-        const time = formatTime(block.block_header.raw_data.timestamp * 1000);
-        const isMySr = srList.includes(srAddr);
-        return `
-          <tr>
-            <td>${idx+1}</td>
-            <td><span class="height-col">${num}${createCopyBtn(num)}</span></td>
-            <td><span class="hash-col">${hash.slice(0,8)}...${hash.slice(-8)}${createCopyBtn(hash.slice(0,8)+'...'+hash.slice(-8), hash)}</span></td>
-            <td>
-              <div class="block-owner-time">
-                <div class="owner-short">
-                  ${shortSr}
-                  ${isMySr?'<span class="sr-tag">SR</span>':''}
-                  ${createCopyBtn(shortSr, srAddr)}
-                </div>
-                <div class="time-small">${time}</div>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join('')}
-    </tbody>
-  `;
-  netRecordBox.innerHTML = '';
-  netRecordBox.appendChild(table);
-  const loadMore = document.createElement('button');
-  loadMore.className = 'load-more-btn';
-  loadMore.textContent = '加载更多';
-  loadMore.onclick = async () => {
-    netShowCount += 15;
-    await loadNetBlocks(latestBlock.block_header.raw_data.number);
-  };
-  netRecordBox.appendChild(loadMore);
-}
-
-function addSrBlockRecord(block) {
-  const exist = srBlockRecords.find(r => r.blockID === block.blockID);
-  if (exist) return;
-  srBlockRecords.unshift(block);
-  if (srBlockRecords.length > 50) srBlockRecords.pop();
-  renderSrRecords();
-}
-
-function renderSrRecords(filterSr = 'all', searchNum = '') {
-  let list = srBlockRecords;
-  if (filterSr !== 'all') {
-    list = list.filter(r => r.block_header.raw_data.witness_address === filterSr);
-  }
-  if (searchNum) {
-    const num = parseInt(searchNum);
-    list = list.filter(r => r.block_header.raw_data.number === num);
-  }
-  if (list.length === 0) {
-    srRecordBox.innerHTML = '<div class="empty-tip">暂无SR出块记录</div>';
-    return;
-  }
-  const table = document.createElement('table');
-  table.className = 'table-box sr-table';
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>序号</th>
-        <th>高度</th>
-        <th>区块哈希</th>
-        <th>单双</th>
-        <th>时间</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${list.map((block, idx) => {
-        const num = block.block_header.raw_data.number;
-        const hash = block.blockID;
-        const isOdd = num % 2 === 1;
-        const time = formatTime(block.block_header.raw_data.timestamp * 1000);
-        return `
-          <tr>
-            <td>${idx+1}</td>
-            <td><span class="height-col">${num}${createCopyBtn(num)}</span></td>
-            <td><span class="hash-col">${hash.slice(0,8)}...${hash.slice(-8)}${createCopyBtn(hash.slice(0,8)+'...'+hash.slice(-8), hash)}</span></td>
-            <td>${isOdd ? '<span class="odd-tag">单</span>' : '<span class="even-tag">双</span>'}</td>
-            <td>${time}</td>
-          </tr>
-        `;
-      }).join('')}
-    </tbody>
-  `;
-  srRecordBox.innerHTML = '';
-  srRecordBox.appendChild(table);
-}
-
-// 下注功能
-betTypeBtns.forEach(btn => {
-  btn.onclick = () => {
-    betTypeBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentBetType = btn.dataset.bet;
-  };
+// 页面加载完成先初始化TronWeb
+window.addEventListener('DOMContentLoaded', () => {
+    tronWeb = new TronWeb(TRON_FULL_HOST, TRON_FULL_HOST, TRON_FULL_HOST);
 });
 
-placeBetBtn.onclick = () => {
-  const sr = betSrSelect.value;
-  const amount = parseFloat(betAmountInput.value);
-  if (!sr) {
-    alert('请选择SR');
-    return;
-  }
-  if (isNaN(amount) || amount <= 0) {
-    alert('请输入正确的下注金额');
-    return;
-  }
-  if (amount > walletBalance) {
-    alert('余额不足');
-    return;
-  }
-  currentBetSr = sr;
-  walletBalance -= amount;
-  walletRecords.unshift({ type: 'bet', amount: -amount, time: new Date().toLocaleString('zh-CN') });
-  updateWalletUI();
-  betAmountInput.value = '';
-  alert(`已下注 ${amount} TRX，SR: ${shortenAddr(sr)}，类型: ${currentBetType === 'odd' ? '单' : '双'}`);
-};
-
-function checkBetResult(block) {
-  if (!currentBetSr) return;
-  const blockSr = block.block_header.raw_data.witness_address;
-  if (blockSr !== currentBetSr) return;
-  const num = block.block_header.raw_data.number;
-  const isBlockOdd = num % 2 === 1;
-  const isBetWin = (currentBetType === 'odd' && isBlockOdd) || (currentBetType === 'even' && !isBlockOdd);
-  const betRecord = walletRecords.find(r => r.type === 'bet' && r.amount < 0);
-  if (!betRecord) return;
-  const betAmount = Math.abs(betRecord.amount);
-  if (isBetWin) {
-    walletBalance += betAmount * 2;
-    walletRecords.unshift({ type: 'win', amount: betAmount, time: new Date().toLocaleString('zh-CN') });
-    alert(`恭喜！下注赢了，获得 ${betAmount} TRX`);
-  } else {
-    walletRecords.unshift({ type: 'lose', amount: -betAmount, time: new Date().toLocaleString('zh-CN') });
-    alert(`很遗憾，下注输了，损失 ${betAmount} TRX`);
-  }
-  currentBetSr = '';
-  updateWalletUI();
+// 哈希单双判断
+function getHashOddEven(hash){
+    if(!hash) return {tag:'',num:0,isOdd:false};
+    const digits = hash.replace(/[^0-9]/g, '');
+    if(!digits) return {tag:'',num:0,isOdd:false};
+    const last = parseInt(digits.slice(-1));
+    return {
+        num: last,
+        tag: last%2===0 ? '<span class="even-tag">双</span>' : '<span class="odd-tag">单</span>',
+        isOdd: last%2===1
+    };
 }
 
-// 搜索功能
-openSearchBtn.onclick = () => {
-  searchModal.style.display = 'flex';
-  searchInput.value = '';
-  searchResult.innerHTML = '请输入区块高度/哈希进行搜索';
-};
-closeSearchModal.onclick = () => searchModal.style.display = 'none';
-closeSearchModalBtn.onclick = () => searchModal.style.display = 'none';
-searchModal.onclick = (e) => e.target === searchModal && (searchModal.style.display = 'none');
-
-doSearchBtn.onclick = async () => {
-  const keyword = searchInput.value.trim();
-  if (!keyword) {
-    alert('请输入区块高度/哈希');
-    return;
-  }
-  searchResult.innerHTML = '<div class="search-loading">搜索中...</div>';
-  try {
-    const res = await fetch(`${API_BASE}/api/block/${keyword}`);
-    const block = await res.json();
-    const num = block.block_header.raw_data.number;
-    const hash = block.blockID;
-    const srAddr = block.block_header.raw_data.witness_address;
-    const shortSr = shortenAddr(srAddr);
-    const time = formatTime(block.block_header.raw_data.timestamp * 1000);
-    const isMySr = srList.includes(srAddr);
-    const isOdd = num % 2 === 1;
-    searchResult.innerHTML = `
-      <div class="block-info-detail">
-        <span class="label">区块高度：</span><span class="value-detail">${num}${createCopyBtn(num)}</span>
-        <span class="label">区块哈希：</span><span class="value-detail">${hash}${createCopyBtn(hash)}</span>
-        <span class="label">出块者：</span><span class="value-detail">${shortSr}${isMySr?'<span class="sr-tag">我的SR</span>':''}${createCopyBtn(shortSr, srAddr)}</span>
-        <span class="label">单双：</span><span class="value-detail">${isOdd?'<span class="odd-tag">单</span>':'<span class="even-tag">双</span>'}</span>
-        <span class="label">出块时间：</span><span class="value-detail">${time}</span>
-      </div>
-    `;
-  } catch (err) {
-    searchResult.innerHTML = '<div class="search-error">搜索失败，请检查输入的高度/哈希是否正确</div>';
-  }
-};
-
-// 搜索过滤
-srFilterSelect.onchange = () => {
-  renderSrRecords(srFilterSelect.value, srSearchInput.value);
-};
-srSearchInput.oninput = () => {
-  renderSrRecords(srFilterSelect.value, srSearchInput.value);
-};
-srSearchClear.onclick = () => {
-  srSearchInput.value = '';
-  renderSrRecords(srFilterSelect.value, '');
-};
-
-netSearchInput.oninput = () => {
-  const num = netSearchInput.value;
-  if (!num) {
-    renderNetRecords();
-    return;
-  }
-  const block = netBlockRecords.find(r => r.block_header.raw_data.number === parseInt(num));
-  if (!block) {
-    netRecordBox.innerHTML = '<div class="empty-tip">未找到对应区块</div>';
-    return;
-  }
-  netRecordBox.innerHTML = `
-    <div class="table-container">
-      <table class="table-box net-table">
-        <thead>
-          <tr>
-            <th>高度</th>
-            <th>区块哈希</th>
-            <th>出块者 / 时间</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><span class="height-col">${block.block_header.raw_data.number}${createCopyBtn(block.block_header.raw_data.number)}</span></td>
-            <td><span class="hash-col">${block.blockID}${createCopyBtn(block.blockID)}</span></td>
-            <td>
-              <div class="block-owner-time">
-                <div class="owner-short">
-                  ${shortenAddr(block.block_header.raw_data.witness_address)}
-                  ${srList.includes(block.block_header.raw_data.witness_address)?'<span class="sr-tag">SR</span>':''}
-                  ${createCopyBtn(shortenAddr(block.block_header.raw_data.witness_address), block.block_header.raw_data.witness_address)}
-                </div>
-                <div class="time-small">${formatTime(block.block_header.raw_data.timestamp * 1000)}</div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  `;
-};
-netSearchClear.onclick = () => {
-  netSearchInput.value = '';
-  renderNetRecords();
-};
-
-// 刷新按钮
-refreshLatestBtn.onclick = loadLatestBlock;
-
-// 初始化
-async function init() {
-  await loadLatestBlock();
-  setInterval(loadLatestBlock, 3000);
+// 余额刷新
+function updateTopBalance(){
+    document.querySelector('#topBalance .num').textContent = balance.toFixed(2);
 }
 
-init();
+// 钱包记录
+function updateRecordList(){
+    const box = document.getElementById('recordList');
+    let html = '';
+    betRecord.slice(-15).reverse().forEach(r=>{
+        const sign = r.type.includes('中奖') || r.type.includes('充值') ? '+' : '-';
+        const cls = sign==='+' ? 'record-income' : 'record-cost';
+        html+=`<div class="record-item"><div><span class="record-type">${r.type}</span><span class="${cls}">${sign}${r.amount.toFixed(2)}</span></div><div class="record-time">${r.time}</div></div>`;
+    });
+    box.innerHTML = html || '<div style="color:#999;text-align:center">暂无记录</div>';
+}
+function addRecord(type, amount){
+    betRecord.push({type, amount, time: new Date().toLocaleTimeString()});
+    updateRecordList();
+}
+function updateBalance(){
+    document.getElementById('balance').textContent = balance.toFixed(2);
+    updateTopBalance();
+    updateRecordList();
+}
+
+// 记录搜索框清空
+function clearSearch(type){
+    type==='net' ? document.getElementById('searchNetHeight').value='' : document.getElementById('searchSrHeight').value='';
+    renderAll();
+}
+
+// ✅ 新增：搜索弹窗输入框一键清空
+function clearSearchInput(type){
+    if(type === 'height'){
+        document.getElementById('searchByHeight').value = '';
+    }else if(type === 'hash'){
+        document.getElementById('searchByHash').value = '';
+    }
+    // 两个输入框都为空时，重置搜索结果
+    const heightVal = document.getElementById('searchByHeight').value.trim();
+    const hashVal = document.getElementById('searchByHash').value.trim();
+    if(!heightVal && !hashVal){
+        document.getElementById('searchResultBox').className='search-result-tip';
+        document.getElementById('searchResultBox').innerHTML='请输入搜索条件并点击搜索';
+    }
+}
+
+// 刷新SR下拉
+function refreshSrOptions(){
+    const betSel = document.getElementById('betSrSelect');
+    const filterSel = document.getElementById('srFilter');
+    betSel.innerHTML = '<option value="">选择下注SR</option>';
+    filterSel.innerHTML = '<option value="all">全部SR记录</option>';
+    targetSR.forEach((addr,i)=>{
+        const opt1 = document.createElement('option');opt1.value=addr;opt1.textContent=`SR${i+1}`;betSel.appendChild(opt1);
+        const opt2 = document.createElement('option');opt2.value=addr;opt2.textContent=`仅看SR${i+1}`;filterSel.appendChild(opt2);
+    });
+}
+
+// 下注状态
+function showBetPending(){
+    const t = currentBet.type==='odd'?'单':'双';
+    const idx = targetSR.indexOf(currentBet.targetSr)+1;
+    document.getElementById('betStatus').innerHTML = `<div class="bet-pending"><span>🎯 待开奖：押${t} · ${currentBet.amount.toFixed(2)}</span><span>目标：SR${idx}</span></div>`;
+    document.getElementById('betStatus').style.display='block';
+    document.getElementById('betBtn').disabled=true;
+}
+
+// 开奖结果
+function showBetResult(win, reward){
+    const idx = targetSR.indexOf(currentBet.targetSr)+1;
+    document.getElementById('betStatus').innerHTML = win
+        ?`<div class="bet-win">🎉 中奖！奖励${reward.toFixed(2)} · SR${idx}</div>`
+        :`<div class="bet-lose">❌ 未中奖 · SR${idx}</div>`;
+    setTimeout(()=>{
+        document.getElementById('betStatus').style.display='none';
+        document.getElementById('betBtn').disabled=false;
+    },3000);
+}
+
+// 开奖判断
+function checkBetResult(srAddr, hash){
+    if(!currentBet || srAddr!==currentBet.targetSr) return;
+    const res = getHashOddEven(hash);
+    const win = (currentBet.type==='odd'&&res.isOdd)||(currentBet.type==='even'&&!res.isOdd);
+    const reward = currentBet.amount*ODDS;
+    win?(balance+=reward,addRecord('下注中奖',reward)):addRecord('下注亏损',currentBet.amount);
+    updateBalance();
+    showBetResult(win,reward);
+    currentBet=null;
+}
+
+// 工具函数
+function hex2Base58(hex){try{return TronWeb.address.fromHex(hex.startsWith('41')?hex:'41'+hex)}catch(e){return hex}}
+function shortenAddr(a){return a.length>14?a.slice(0,6)+'...'+a.slice(-6):a}
+function formatHash(h){return h?h.slice(0,5)+'…'+h.slice(-8):''}
+
+// 兼容复制函数
+function copyText(t, fullAddr = ''){
+    const copyContent = fullAddr || t;
+    const b=event.target.closest('.copy-btn');
+    const i=b.querySelector('.copy-icon');
+    const input = document.createElement('input');
+    input.style.position='fixed';input.style.opacity='0';input.value=copyContent;
+    document.body.appendChild(input);input.select();document.execCommand('copy');document.body.removeChild(input);
+    b.classList.add('success');
+    i.innerHTML='<path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2"/>';
+    setTimeout(()=>{b.classList.remove('success');i.innerHTML='<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2"/><path d="M5 15H4V4h10v1" stroke="currentColor" stroke-width="2"/>'},800);
+}
+
+// 区块搜索核心逻辑（稳定版不变）
+async function searchBlock() {
+    const heightInput = document.getElementById('searchByHeight').value.trim();
+    const hashInput = document.getElementById('searchByHash').value.trim();
+    const resultBox = document.getElementById('searchResultBox');
+
+    if (!heightInput && !hashInput) {
+        resultBox.className='search-error';
+        resultBox.innerHTML='⚠️ 请输入区块高度或完整哈希';
+        return;
+    }
+
+    resultBox.className='search-loading';
+    resultBox.innerHTML='🔍 正在查询波场主网真实区块数据...';
+
+    try {
+        let blockData;
+        if (heightInput) {
+            const blockNum = parseInt(heightInput);
+            if (isNaN(blockNum) || blockNum < 1) {
+                resultBox.className='search-error';
+                resultBox.innerHTML='⚠️ 请输入有效的区块高度（正整数）';
+                return;
+            }
+            blockData = await tronWeb.trx.getBlock(blockNum);
+        }
+        else if (hashInput) {
+            if (hashInput.length !== 64) {
+                resultBox.className='search-error';
+                resultBox.innerHTML='⚠️ 请输入完整的64位区块哈希';
+                return;
+            }
+            blockData = await tronWeb.trx.getBlock(hashInput);
+        }
+
+        if (!blockData || !blockData.blockID || !blockData.block_header) {
+            resultBox.className='search-error';
+            resultBox.innerHTML='❌ 波场主网未查询到该区块，请检查高度/哈希是否正确';
+            return;
+        }
+
+        const blockHeight = blockData.block_header.raw_data.number;
+        const blockHash = blockData.blockID;
+        const witnessAddress = blockData.block_header.raw_data.witness_address;
+        const srAddr = hex2Base58(witnessAddress);
+        const blockTime = new Date(blockData.block_header.raw_data.timestamp).toLocaleString();
+        const oddEvenInfo = getHashOddEven(blockHash);
+        const isMonitorSR = targetSR.includes(srAddr);
+
+        resultBox.className='block-info-detail';
+        resultBox.innerHTML=`
+            <span class="label">区块高度：</span>
+            <span class="value-detail">
+                ${blockHeight}
+                <button class="copy-btn" onclick="copyText('${blockHeight}')">
+                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4V4h10v1"/>
+                    </svg>
+                </button>
+            </span>
+            
+            <span class="label">区块哈希：</span>
+            <span class="value-detail">
+                ${blockHash} ${oddEvenInfo.tag}
+                <button class="copy-btn" onclick="copyText('${blockHash}')">
+                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4V4h10v1"/>
+                    </svg>
+                </button>
+            </span>
+            
+            <span class="label">出块者：</span>
+            <span class="value-detail">
+                ${srAddr} (${shortenAddr(srAddr)})
+                ${isMonitorSR?'<span class="sr-tag">监控SR</span>':''}
+                <button class="copy-btn" onclick="copyText('${srAddr}')">
+                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2"/>
+                        <path d="M5 15H4V4h10v1"/>
+                    </svg>
+                </button>
+            </span>
+            
+            <span class="label">出块时间：</span>
+            <span class="value-detail">${blockTime}</span>
+            
+            <span class="label">哈希单双：</span>
+            <span class="value-detail">末尾数字 ${oddEvenInfo.num} → ${oddEvenInfo.isOdd?'单':'双'}</span>
+        `;
+
+    } catch (error) {
+        console.error('区块查询失败，详细错误：', error);
+        resultBox.className='search-error';
+        if (error.message.includes('timeout') || error.message.includes('network')) {
+            resultBox.innerHTML='❌ 网络请求超时，请检查网络后重试';
+        } else if (error.message.includes('403') || error.message.includes('rate limit')) {
+            resultBox.innerHTML='❌ 请求被波场接口限流，建议添加TronGrid API Key彻底解决';
+        } else if (error.message.includes('not found')) {
+            resultBox.innerHTML='❌ 未查询到该区块，请检查高度/哈希是否正确';
+        } else {
+            resultBox.innerHTML='❌ 查询失败，请重试，或打开控制台查看详细错误';
+        }
+    }
+}
+
+// 抓取历史区块
+async function fetchRecentSRBlocksSerial(count){
+    try{
+        const latestBlock = await tronWeb.trx.getBlock('latest');
+        const topHeight = latestBlock.block_header.raw_data.number;
+        for(let i=0;i<count;i++){
+            const currentHeight = topHeight - i;
+            const block = await tronWeb.trx.getBlock(currentHeight);
+            if(!block?.block_header?.raw_data) continue;
+            const hash = block.blockID;
+            const time = new Date(block.block_header.raw_data.timestamp).toLocaleTimeString();
+            const srAddr = hex2Base58(block.block_header.raw_data.witness_address);
+            const item = {height:currentHeight, hash, time, srAddr};
+            if(!allBlockHistory.some(x=>x.height===item.height)){
+                allBlockHistory.unshift(item);
+                if(targetSR.includes(srAddr)) srBlockList.unshift(item);
+            }
+        }
+        if(allBlockHistory.length>netMaxCount) allBlockHistory = allBlockHistory.slice(0,netMaxCount);
+        if(srBlockList.length>netMaxCount) srBlockList = srBlockList.slice(0,netMaxCount);
+        lastProcessedHeight = topHeight;
+        renderAll();
+    }catch(e){
+        console.error('加载历史区块失败：', e);
+    }
+}
+
+// 稳定同步区块
+function startSync(){
+    clearInterval(window.syncTimer);
+    doSync();
+    window.syncTimer=setInterval(doSync,1500);
+}
+async function doSync(){
+    try{
+        const latestBlock = await tronWeb.trx.getBlock('latest');
+        const latestHeight = latestBlock.block_header.raw_data.number;
+        if(lastProcessedHeight===0) lastProcessedHeight=latestHeight;
+        if(latestHeight<=lastProcessedHeight) return;
+
+        for(let h=lastProcessedHeight+1;h<=latestHeight;h++){
+            const block = await tronWeb.trx.getBlock(h);
+            if(!block?.block_header?.raw_data) continue;
+            const hash = block.blockID;
+            const time = new Date(block.block_header.raw_data.timestamp).toLocaleTimeString();
+            const srAddr = hex2Base58(block.block_header.raw_data.witness_address);
+            const item = {height:h, hash, time, srAddr};
+            const oddEven = getHashOddEven(hash);
+
+            document.getElementById('blockHeight').textContent=h;
+            document.getElementById('blockHash').innerHTML=formatHash(hash)+oddEven.tag;
+            document.getElementById('blockSr').textContent=shortenAddr(srAddr);
+            document.getElementById('blockTime').textContent=time;
+            document.getElementById('lastUpdate').textContent=`已同步至高度：${h}`;
+
+            if(!allBlockHistory.some(x=>x.height===h)){
+                allBlockHistory.unshift(item);
+                if(allBlockHistory.length>netMaxCount) allBlockHistory.pop();
+                if(targetSR.includes(srAddr)){
+                    srBlockList.unshift(item);
+                    if(srBlockList.length>netMaxCount) srBlockList.pop();
+                    checkBetResult(srAddr,hash);
+                }
+            }
+            lastProcessedHeight=h;
+        }
+        renderAll();
+    }catch(e){
+        console.error('同步区块失败：', e);
+    }
+}
+
+// 加载更多
+function loadMoreNet(){
+    netShowCount = loadMoreCount;
+    renderAll();
+}
+
+// 渲染所有内容
+function renderAll(){
+    const sNet=document.getElementById('searchNetHeight').value.trim();
+    const sSr=document.getElementById('searchSrHeight').value.trim();
+    const filterSr=document.getElementById('srFilter').value;
+    const netBox=document.getElementById('allHistoryBox');
+    const srBox=document.getElementById('srRecordBox');
+
+    let showNet=sNet?allBlockHistory.filter(i=>i.height==sNet):allBlockHistory;
+    const displayNet=sNet?showNet:showNet.slice(0,netShowCount);
+    if(showNet.length===0){
+        netBox.innerHTML='<div class="empty-tip">暂无区块记录</div>';
+    }else{
+        let ht=`<table class="table-box net-table"><thead><tr><th>#</th><th>高度</th><th>哈希</th><th>出块者 / 时间</th></tr></thead><tbody>`;
+        displayNet.forEach((i,n)=>{
+            const r=getHashOddEven(i.hash);
+            const isTar=targetSR.includes(i.srAddr);
+            ht+=`<tr>
+                <td>${n+1}</td>
+                <td><span class="height-col">${i.height}<button class="copy-btn" onclick="copyText('${i.height}')"><svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4V4h10v1"/></svg></button></span></td>
+                <td><span class="hash-col">${formatHash(i.hash)}${r.tag}<button class="copy-btn" onclick="copyText('${i.hash}')"><svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4V4h10v1"/></svg></button></span></td>
+                <td>
+                    <div class="block-owner-time">
+                        <div class="owner-short">
+                            ${shortenAddr(i.srAddr)}
+                            ${isTar?'<span class="sr-tag">SR</span>':''}
+                            <button class="copy-btn" onclick="copyText('${i.srAddr}')">
+                                <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                    <path d="M5 15H4V4h10v1"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="time-small">${i.time}</div>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        ht+='</tbody></table>';
+        if(!sNet && showNet.length>15){
+            ht+=`<button class="load-more-btn" onclick="loadMoreNet()">加载更多（显示50条）</button>`;
+        }
+        netBox.innerHTML=ht;
+    }
+
+    let showSr=srBlockList;
+    filterSr!=='all'&&(showSr=srBlockList.filter(i=>i.srAddr===filterSr));
+    sSr&&(showSr=showSr.filter(i=>i.height==sSr));
+    if(targetSR.length===0){
+        srBox.innerHTML='<div class="empty-tip">请先设置监控SR</div>';
+    }else if(showSr.length===0){
+        srBox.innerHTML='<div class="empty-tip">该SR暂无出块记录</div>';
+    }else{
+        let ht=`<table class="table-box sr-table"><thead><tr><th>#</th><th>高度</th><th>哈希</th><th>SR标识</th><th>时间</th></tr></thead><tbody>`;
+        showSr.slice(0,50).forEach((i,n)=>{
+            const r=getHashOddEven(i.hash);
+            const idx=targetSR.indexOf(i.srAddr)+1;
+            ht+=`<tr>
+                <td>${n+1}</td>
+                <td><span class="height-col">${i.height}<button class="copy-btn" onclick="copyText('${i.height}')"><svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4V4h10v1"/></svg></button></span></td>
+                <td><span class="hash-col">${formatHash(i.hash)}${r.tag}<button class="copy-btn" onclick="copyText('${i.hash}')"><svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4V4h10v1"/></svg></button></span></td>
+                <td><span class="sr-tag">SR${idx}</span></td>
+                <td>${i.time}</td>
+            </tr>`;
+        });
+        srBox.innerHTML=ht+'</tbody></table>';
+    }
+}
+
+// 页面加载完成后绑定所有事件
+window.onload=()=>{
+    const settingModal = document.getElementById('settingModal');
+    const walletModal = document.getElementById('walletModal');
+    const searchModal = document.getElementById('searchModal');
+
+    document.getElementById('openWallet').onclick=()=>{walletModal.style.display='flex';updateBalance();};
+    document.getElementById('closeWallet').onclick=()=>walletModal.style.display='none';
+    walletModal.onclick=e=>e.target===walletModal&&(walletModal.style.display='none');
+
+    document.getElementById('openSetting').onclick=()=>settingModal.style.display='flex';
+    document.getElementById('closeSetting').onclick=()=>settingModal.style.display='none';
+    settingModal.onclick=e=>e.target===settingModal&&(settingModal.style.display='none');
+
+    document.getElementById('openSearch').onclick=()=>{searchModal.style.display='flex';};
+    document.getElementById('closeSearch').onclick=()=>{searchModal.style.display='none';};
+    searchModal.onclick=e=>e.target===searchModal&&(searchModal.style.display='none');
+    document.getElementById('doSearch').onclick=searchBlock;
+    // 底部清空输入按钮功能不变
+    document.getElementById('clearSearchInput').onclick=()=>{
+        document.getElementById('searchByHeight').value='';
+        document.getElementById('searchByHash').value='';
+        document.getElementById('searchResultBox').className='search-result-tip';
+        document.getElementById('searchResultBox').innerHTML='请输入搜索条件并点击搜索';
+    };
+
+    document.getElementById('rechargeBtn').onclick=()=>{
+        const v=parseFloat(document.getElementById('amountInput').value)||0;
+        if(v<=0) return;
+        balance+=v;
+        addRecord('充值',v);
+        updateBalance();
+        document.getElementById('amountInput').value='';
+    };
+    document.getElementById('deductBtn').onclick=()=>{
+        const v=parseFloat(document.getElementById('amountInput').value)||0;
+        if(v<=0||v>balance) return;
+        balance-=v;
+        addRecord('扣除',v);
+        updateBalance();
+        document.getElementById('amountInput').value='';
+    };
+
+    document.querySelectorAll('.bet-type button').forEach(b=>{
+        b.onclick=()=>{
+            document.querySelectorAll('.bet-type button').forEach(x=>x.classList.remove('active'));
+            b.classList.add('active');
+        }
+    });
+
+    document.getElementById('betBtn').onclick=()=>{
+        if(currentBet){alert('已有待开奖的下注，请等待区块出块后再操作');return;}
+        const sr = document.getElementById('betSrSelect').value;
+        const amt = parseFloat(document.getElementById('betAmount').value)||0;
+        if(!sr||amt<=0||amt>balance){alert('请选择下注SR并输入有效的金额');return;}
+        const type = document.querySelector('.bet-type button.active').dataset.type;
+        balance-=amt;
+        addRecord('下注扣款',amt);
+        currentBet={type,amount:amt,targetSr:sr};
+        updateBalance();
+        showBetPending();
+        document.getElementById('betAmount').value='';
+    };
+
+    document.getElementById('saveBtn').onclick=async()=>{
+        targetSR = [
+            document.getElementById('sr1').value.trim(),
+            document.getElementById('sr2').value.trim(),
+            document.getElementById('sr3').value.trim()
+        ].filter(a=>a.startsWith('T')&&a.length===34);
+        const showText = targetSR.map((_,i)=>`SR${i+1}`).join('、');
+        document.getElementById('targetList').textContent = targetSR.length?`${targetSR.length}个SR`:'未设置';
+        document.getElementById('currentMonitorTxt').textContent = targetSR.length?`监控：${showText}`:'未设置';
+        refreshSrOptions();
+        srBlockList=[];
+        allBlockHistory=[];
+        lastProcessedHeight=0;
+        netShowCount=15;
+        settingModal.style.display='none';
+        document.getElementById('srRecordBox').innerHTML='<div class="loading-tip">正在加载历史区块...</div>';
+        await fetchRecentSRBlocksSerial(10);
+        startSync();
+    };
+
+    document.getElementById('refreshBtn').onclick=doSync;
+    document.getElementById('searchNetHeight').addEventListener('input',renderAll);
+    document.getElementById('searchSrHeight').addEventListener('input',renderAll);
+    document.getElementById('srFilter').addEventListener('change',renderAll);
+    updateTopBalance();
+    document.getElementById('saveBtn').click();
+};
 </script>
 </body>
 </html>
